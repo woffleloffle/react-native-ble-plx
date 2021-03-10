@@ -257,6 +257,10 @@ export interface BleModuleInterface {
   addListener(string): void;
   removeListeners(number): void;
 
+  createAndroidNotificationChannel(channel: ForegroundChannel): void;
+  startAndroidForegroundService(notification: ForegroundNotification): void;
+  stopAndroidForegroundService(): void;
+
   // Lifecycle
 
   /**

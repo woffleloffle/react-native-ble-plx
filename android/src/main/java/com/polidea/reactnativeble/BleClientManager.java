@@ -1,5 +1,10 @@
 package com.polidea.reactnativeble;
 
+import android.content.ComponentName;
+import android.content.Intent;
+import android.os.Build;
+import android.util.Log;
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -41,6 +46,10 @@ import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import static com.polidea.reactnativeble.Constants.ERROR_INVALID_CONFIG;
+import static com.polidea.reactnativeble.Constants.ERROR_SERVICE_ERROR;
+import static com.polidea.reactnativeble.Constants.NOTIFICATION_CONFIG;
+
 
 public class BleClientManager extends ReactContextBaseJavaModule {
 
@@ -61,6 +70,7 @@ public class BleClientManager extends ReactContextBaseJavaModule {
         super(reactContext);
     }
 
+    @NonNull
     @Override
     public String getName() {
         return NAME;
@@ -74,6 +84,52 @@ public class BleClientManager extends ReactContextBaseJavaModule {
         }
         return constants;
     }
+
+    // Foreground service
+
+    @ReactMethod
+    public void createAndroidNotificationChannel(ReadableMap channelConfig, Promise promise) {
+      Log.e("Create Channel", "hello");
+      if (channelConfig == null) {
+        promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Channel config is invalid");
+        return;
+      }
+      NotificationHelper.getInstance(getReactApplicationContext()).createNotificationChannel(channelConfig, promise);
+    }
+
+    @ReactMethod
+    public void startAndroidForegroundService(ReadableMap notificationConfig, Promise promise) {
+
+      Log.e("asd", String.valueOf(notificationConfig));
+
+      Intent intent = new Intent(getReactApplicationContext(), ForegroundService.class);
+      intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_START);
+      intent.putExtra(NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
+
+      ComponentName componentName = getReactApplicationContext().startService(intent);
+
+      if (componentName != null) {
+        promise.resolve(null);
+      } else {
+        promise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service is not started");
+      }
+    }
+
+    @ReactMethod
+    public void stopAndroidForegroundService(Promise promise) {
+      Intent intent = new Intent(getReactApplicationContext(), ForegroundService.class);
+      intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_STOP);
+
+      boolean stopped = getReactApplicationContext().stopService(intent);
+
+      if (stopped) {
+        promise.resolve(null);
+      } else {
+        promise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service failed to stop");
+      }
+    }
+
+    //
 
     // Lifecycle -----------------------------------------------------------------------------------
 

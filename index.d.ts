@@ -980,6 +980,20 @@ declare module 'react-native-ble-plx' {
     connectedPeripherals: NativeDevice[]
   }
 
+  export interface ForegroundChannel {
+    id: string;
+    name: string;
+    description: string;
+    enableVibration: boolean;
+}
+  export interface ForegroundNotification {
+    channelId: string;
+    id: number;
+    icon: string;
+    title: string;
+    text: string;
+  }
+
   // BleManager.js *****************************************************************************************************
 
   /**
@@ -1117,6 +1131,10 @@ declare module 'react-native-ble-plx' {
      * Stops {@link Device} scan if in progress.
      */
     stopDeviceScan(): void
+
+    createAndroidNotificationChannel(config: ForegroundChannel): void;
+    startAndroidForegroundService(notification: ForegroundNotification): void;
+    stopAndroidForegroundService(): void;
 
     /**
      * Request a connection parameter update. This functions may update connection parameters on Android API level 21 or

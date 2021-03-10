@@ -356,6 +356,16 @@ export class BleManager {
     BleModule.stopDeviceScan()
   }
 
+  createAndroidNotificationChannel(channel) {
+    BleModule.createAndroidNotificationChannel(channel)
+  }
+  startAndroidForegroundService(notification) {
+    BleModule.startAndroidForegroundService(notification)
+  }
+  stopAndroidForegroundService() {
+    BleModule.stopAndroidForegroundService()
+  }
+
   /**
    * Request a connection parameter update. This functions may update connection parameters on Android API level 21 or
    * above.
