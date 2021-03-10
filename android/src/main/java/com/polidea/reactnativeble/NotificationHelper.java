@@ -35,48 +35,56 @@ class NotificationHelper {
   void createNotificationChannel(ReadableMap channelConfig, Promise promise) {
     if (channelConfig == null) {
       Log.e("NotificationHelper", "createNotificationChannel: invalid config");
-      promise.reject(ERROR_INVALID_CONFIG, "VIForegroundService: Channel config is invalid");
+      promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Channel config is invalid");
       return;
     }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       if (!channelConfig.hasKey("id")) {
-        promise.reject(ERROR_INVALID_CONFIG, "VIForegroundService: Channel id is required");
+        promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Channel id is required");
         return;
       }
+
       String channelId = channelConfig.getString("id");
       if (!channelConfig.hasKey("name")) {
-        promise.reject(ERROR_INVALID_CONFIG, "VIForegroundService: Channel name is required");
+        promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Channel name is required");
         return;
       }
+
       String channelName = channelConfig.getString("name");
       String channelDescription = channelConfig.getString("description");
+
       int channelImportance = channelConfig.hasKey("importance") ?
         channelConfig.getInt("importance") : NotificationManager.IMPORTANCE_LOW;
+
       boolean enableVibration = channelConfig.hasKey("enableVibration") && channelConfig.getBoolean("enableVibration");
+
       if (channelId == null || channelName == null) {
-        promise.reject(ERROR_INVALID_CONFIG, "VIForegroundService: Channel id or name is not specified");
+        promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Channel id or name is not specified");
         return;
       }
+
       NotificationChannel channel = new NotificationChannel(channelId, channelName, channelImportance);
       channel.setDescription(channelDescription);
       channel.enableVibration(enableVibration);
+
       mNotificationManager.createNotificationChannel(channel);
+
       promise.resolve(null);
     } else {
-      promise.reject(ERROR_ANDROID_VERSION, "VIForegroundService: Notification channel can be created on Android O+");
+      promise.reject(ERROR_ANDROID_VERSION, "ForegroundService: Notification channel can be created on Android O+");
     }
   }
 
   Notification buildNotification(Context context, Bundle notificationConfig) {
-    Log.e("buildNotification", "1");
-
     if (notificationConfig == null) {
       Log.e("NotificationHelper", "buildNotification: invalid config");
       return null;
     }
+
     Class mainActivityClass = getMainActivityClass(context);
     if (mainActivityClass == null) {
-      Log.e("NotificationHelper", "mainActivityClass is null!");
+      Log.e("NotificationHelper", "mainActivityClass is null");
       return null;
     }
 
@@ -120,21 +128,16 @@ class NotificationHelper {
         break;
     }
 
-    Log.e("buildNotification", "2");
-    Log.e("priority", String.valueOf(priority));
-
     notificationBuilder.setContentTitle(notificationConfig.getString("title"))
       .setContentText(notificationConfig.getString("text"))
       .setPriority(priority)
       .setContentIntent(pendingIntent);
 
     String iconName = notificationConfig.getString("icon");
+
     if (iconName != null) {
-      Log.e("buildNotification", "3");
       notificationBuilder.setSmallIcon(getResourceIdForResourceName(context, iconName));
     }
-
-    Log.e("buildNotification", "4");
 
     return notificationBuilder.build();
   }

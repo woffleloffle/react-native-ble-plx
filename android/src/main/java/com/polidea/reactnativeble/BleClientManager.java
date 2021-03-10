@@ -64,7 +64,7 @@ public class BleClientManager extends ReactContextBaseJavaModule {
     private final DescriptorToJsObjectConverter descriptorConverter = new DescriptorToJsObjectConverter();
     private final ServiceToJsObjectConverter serviceConverter = new ServiceToJsObjectConverter();
 
-    private BleAdapter bleAdapter;
+    public static BleAdapter bleAdapter;
 
     public BleClientManager(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -98,20 +98,35 @@ public class BleClientManager extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void startAndroidForegroundService(ReadableMap notificationConfig, Promise promise) {
+    public void startAndroidForegroundService(ReadableMap notificationConfig,
+                                              final String deviceId,
+                                              final String serviceUUID,
+                                              final String characteristicUUID,
+                                              final String transactionId,
+                                              final Promise promise) {
 
-      Log.e("asd", String.valueOf(notificationConfig));
+      Log.e("notificationConfig", String.valueOf(notificationConfig));
 
       Intent intent = new Intent(getReactApplicationContext(), ForegroundService.class);
       intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_START);
       intent.putExtra(NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
 
+      // Add the rest to the intent so we can use them to start the thing in the foreground
+      intent.putExtra("deviceId", deviceId);
+      intent.putExtra("serviceUUID", serviceUUID);
+      intent.putExtra("characteristicUUID", characteristicUUID);
+      intent.putExtra("transactionId", transactionId);
+
+
+      Log.e("starting", "foreground service now");
       ComponentName componentName = getReactApplicationContext().startService(intent);
 
+      final SafePromise safePromise = new SafePromise(promise);
+
       if (componentName != null) {
-        promise.resolve(null);
+        safePromise.resolve(null);
       } else {
-        promise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service is not started");
+        safePromise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service is not started");
       }
     }
 
@@ -122,11 +137,11 @@ public class BleClientManager extends ReactContextBaseJavaModule {
 
       boolean stopped = getReactApplicationContext().stopService(intent);
 
-      if (stopped) {
-        promise.resolve(null);
-      } else {
-        promise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service failed to stop");
-      }
+//      if (stopped) {
+//        promise.resolve(null);
+//      } else {
+//        promise.reject(ERROR_SERVICE_ERROR, "ForegroundService: Foreground service failed to stop");
+//      }
     }
 
     //
@@ -981,7 +996,7 @@ public class BleClientManager extends ReactContextBaseJavaModule {
         );
     }
 
-    private void sendEvent(@NonNull Event event, @Nullable Object params) {
+    public void sendEvent(@NonNull Event event, @Nullable Object params) {
         getReactApplicationContext()
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(event.name, params);

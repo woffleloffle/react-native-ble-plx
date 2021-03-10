@@ -47,6 +47,21 @@ export interface Subscription {
   remove(): void;
 }
 
+export interface ForegroundChannel {
+  id: string;
+  name: string;
+  description: string;
+  enableVibration: boolean;
+}
+
+export interface ForegroundNotification {
+  channelId: string;
+  id: number;
+  icon: string;
+  title: string;
+  text: string;
+}
+
 /**
  * Type of error code mapping table
  */

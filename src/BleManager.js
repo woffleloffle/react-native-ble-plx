@@ -15,8 +15,13 @@ import {
   BleATTErrorCode,
   BleAndroidErrorCode,
   BleIOSErrorCode
-} from './BleError'
-import type { NativeDevice, NativeCharacteristic, NativeDescriptor, NativeBleRestoredState } from './BleModule'
+} from 'react-native-ble-plx/src/BleError'
+import type {
+  NativeDevice,
+  NativeCharacteristic,
+  NativeDescriptor,
+  NativeBleRestoredState
+} from 'react-native-ble-plx/src/BleModule'
 import type {
   Subscription,
   DeviceId,
@@ -26,8 +31,10 @@ import type {
   Base64,
   ScanOptions,
   ConnectionOptions,
-  BleManagerOptions
-} from './TypeDefinition'
+  BleManagerOptions,
+  ForegroundChannel,
+  ForegroundNotification
+} from 'react-native-ble-plx/src/TypeDefinition'
 
 /**
  *
@@ -356,14 +363,37 @@ export class BleManager {
     BleModule.stopDeviceScan()
   }
 
-  createAndroidNotificationChannel(channel) {
-    BleModule.createAndroidNotificationChannel(channel)
-  }
-  startAndroidForegroundService(notification) {
-    BleModule.startAndroidForegroundService(notification)
+  /**
+   * Android background processing stuff
+   */
+
+  createAndroidNotificationChannel(options) {
+    BleModule.createAndroidNotificationChannel(options)
   }
   stopAndroidForegroundService() {
     BleModule.stopAndroidForegroundService()
+  }
+
+  startAndroidForegroundService(
+    notification: ForegroundNotification,
+    deviceIdentifier: DeviceId,
+    serviceUUID: UUID,
+    characteristicUUID: UUID,
+    listener: (error: ?BleError, characteristic: ?Characteristic) => void,
+    transactionId: ?TransactionId
+  ): Subscription {
+    const filledTransactionId = transactionId || this._nextUniqueID()
+    return this._handleMonitorCharacteristic(
+      BleModule.startAndroidForegroundService(
+        notification,
+        deviceIdentifier,
+        serviceUUID,
+        characteristicUUID,
+        filledTransactionId
+      ),
+      filledTransactionId,
+      listener
+    )
   }
 
   /**
