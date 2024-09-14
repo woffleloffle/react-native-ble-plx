@@ -5,7 +5,7 @@ import { Device } from './Device'
 import { Service } from './Service'
 import { Characteristic } from './Characteristic'
 import { Descriptor } from './Descriptor'
-import { State, LogLevel, type BleErrorCodeMessageMapping, ConnectionPriority } from './TypeDefinition'
+import { State, LogLevel, ConnectionPriority } from './TypeDefinition'
 import { BleModule, EventEmitter } from './BleModule'
 import {
   parseBleError,
@@ -18,6 +18,7 @@ import {
 } from './BleError'
 import type { NativeDevice, NativeCharacteristic, NativeDescriptor, NativeBleRestoredState } from './BleModule'
 import type {
+  BleErrorCodeMessageMapping,
   Subscription,
   DeviceId,
   Identifier,
@@ -28,6 +29,10 @@ import type {
   ConnectionOptions,
   BleManagerOptions
 } from './TypeDefinition'
+import { Platform } from 'react-native'
+
+const enableDisableDeprecatedMessage =
+  'react-native-ble-plx: The enable and disable feature is no longer supported. In Android SDK 31+ there were major changes in permissions, which may cause problems with these functions, and in SDK 33+ they were completely removed.'
 
 /**
  *
@@ -45,8 +50,10 @@ import type {
  */
 export class BleManager {
   // Scan subscriptions
+  // $FlowIssue[missing-type-arg]
   _scanEventSubscription: ?EventEmitter
   // Listening to BleModule events
+  // $FlowIssue[missing-type-arg]
   _eventEmitter: EventEmitter
   // Unique identifier used to create internal transactionIds
   _uniqueId: number
@@ -69,6 +76,7 @@ export class BleManager {
 
     const restoreStateFunction = options.restoreStateFunction
     if (restoreStateFunction != null && options.restoreStateIdentifier != null) {
+      // $FlowIssue[prop-missing]
       this._activeSubscriptions[this._nextUniqueID()] = this._eventEmitter.addListener(
         BleModule.RestoreStateEvent,
         (nativeRestoredState: NativeBleRestoredState) => {
@@ -125,11 +133,11 @@ export class BleManager {
   /**
    * Destroys {@link BleManager} instance. A new instance needs to be created to continue working with
    * this library. All operations which were in progress completes with
+   * @returns {Promise<void>} Promise may return an error when the function cannot be called.
    * {@link #bleerrorcodebluetoothmanagerdestroyed|BluetoothManagerDestroyed} error code.
    */
-  destroy() {
-    // Destroy native module object
-    BleModule.destroyClient()
+  async destroy(): Promise<void> {
+    const response = await this._callPromise(BleModule.destroyClient())
 
     // Unsubscribe from any subscriptions
     if (this._scanEventSubscription != null) {
@@ -140,6 +148,8 @@ export class BleManager {
 
     // Destroy all promises
     this._destroyPromises()
+
+    return response
   }
 
   /**
@@ -168,6 +178,7 @@ export class BleManager {
       })
       const value = await Promise.race([destroyPromise, promise])
       delete this._activePromises[id]
+      // $FlowIssue[incompatible-return]
       return value
     } catch (error) {
       delete this._activePromises[id]
@@ -180,9 +191,10 @@ export class BleManager {
   /**
    * Sets new log level for native module's logging mechanism.
    * @param {LogLevel} logLevel New log level to be set.
+   * @returns {Promise<LogLevel>} Current log level.
    */
-  setLogLevel(logLevel: $Keys<typeof LogLevel>) {
-    BleModule.setLogLevel(logLevel)
+  setLogLevel(logLevel: $Keys<typeof LogLevel>): Promise<$Keys<typeof LogLevel> | void> {
+    return this._callPromise(BleModule.setLogLevel(logLevel))
   }
 
   /**
@@ -216,9 +228,10 @@ export class BleManager {
    * setTimeout(() => manager.cancelTransaction(transactionId), 2000);
    *
    * @param {TransactionId} transactionId Id of pending transactions.
+   * @returns {Promise<void>}
    */
-  cancelTransaction(transactionId: TransactionId) {
-    BleModule.cancelTransaction(transactionId)
+  cancelTransaction(transactionId: TransactionId): Promise<void> {
+    return this._callPromise(BleModule.cancelTransaction(transactionId))
   }
 
   // Mark: Monitoring state --------------------------------------------------------------------------------------------
@@ -238,12 +251,14 @@ export class BleManager {
   }
 
   /**
+   * Deprecated
    * Disable Bluetooth. This function blocks until BLE is in PoweredOff state. [Android only]
    *
    * @param {?TransactionId} transactionId Transaction handle used to cancel operation
    * @returns {Promise<BleManager>} Promise completes when state transition was successful.
    */
   async disable(transactionId: ?TransactionId): Promise<BleManager> {
+    console.warn(enableDisableDeprecatedMessage)
     if (!transactionId) {
       transactionId = this._nextUniqueID()
     }
@@ -324,16 +339,17 @@ export class BleManager {
    * scanned {@link Device}. If `null` is passed, all available {@link Device}s will be scanned.
    * @param {?ScanOptions} options Optional configuration for scanning operation.
    * @param {function(error: ?BleError, scannedDevice: ?Device)} listener Function which will be called for every scanned
+   * @returns {Promise<void>} Promise may return an error when the function cannot be called.
    * {@link Device} (devices may be scanned multiple times). It's first argument is potential {@link Error} which is set
    * to non `null` value when scanning failed. You have to start scanning process again if that happens. Second argument
    * is a scanned {@link Device}.
+   * @returns {Promise<void>} the promise may be rejected if the operation is impossible to perform.
    */
-  startDeviceScan(
+  async startDeviceScan(
     UUIDs: ?Array<UUID>,
     options: ?ScanOptions,
-    listener: (error: ?BleError, scannedDevice: ?Device) => void
-  ) {
-    this.stopDeviceScan()
+    listener: (error: ?BleError, scannedDevice: ?Device) => Promise<void>
+  ): Promise<void> {
     const scanListener = ([error, nativeDevice]: [?string, ?NativeDevice]) => {
       listener(
         error ? parseBleError(error, this._errorCodesToMessagesMapping) : null,
@@ -342,18 +358,21 @@ export class BleManager {
     }
     // $FlowFixMe: Flow cannot deduce EmitterSubscription type.
     this._scanEventSubscription = this._eventEmitter.addListener(BleModule.ScanEvent, scanListener)
-    BleModule.startDeviceScan(UUIDs, options)
+
+    return this._callPromise(BleModule.startDeviceScan(UUIDs, options))
   }
 
   /**
    * Stops {@link Device} scan if in progress.
+   * @returns {Promise<void>} the promise may be rejected if the operation is impossible to perform.
    */
-  stopDeviceScan() {
+  stopDeviceScan(): Promise<void> {
     if (this._scanEventSubscription != null) {
       this._scanEventSubscription.remove()
       this._scanEventSubscription = null
     }
-    BleModule.stopDeviceScan()
+
+    return this._callPromise(BleModule.stopDeviceScan())
   }
 
   /**
@@ -396,11 +415,13 @@ export class BleManager {
 
   /**
    * Request new MTU value for this device. This function currently is not doing anything
-   * on iOS platform as MTU exchange is done automatically.
+   * on iOS platform as MTU exchange is done automatically. Since Android 14,
+   * mtu management has been changed, more information can be found at the link:
+   * https://developer.android.com/about/versions/14/behavior-changes-all#mtu-set-to-517
    * @param {DeviceId} deviceIdentifier Device identifier.
    * @param {number} mtu New MTU to negotiate.
    * @param {?TransactionId} transactionId Transaction handle used to cancel operation
-   * @returns {Promise<Device>} Device with updated MTU size. Default value is 23.
+   * @returns {Promise<Device>} Device with updated MTU size. Default value is 23 (517 since Android 14)..
    */
   async requestMTUForDevice(deviceIdentifier: DeviceId, mtu: number, transactionId: ?TransactionId): Promise<Device> {
     if (!transactionId) {
@@ -448,6 +469,9 @@ export class BleManager {
    * @returns {Promise<Device>} Connected {@link Device} object if successful.
    */
   async connectToDevice(deviceIdentifier: DeviceId, options: ?ConnectionOptions): Promise<Device> {
+    if (Platform.OS === 'android' && (await this.isDeviceConnected(deviceIdentifier))) {
+      await this.cancelDeviceConnection(deviceIdentifier)
+    }
     const nativeDevice = await this._callPromise(BleModule.connectToDevice(deviceIdentifier, options))
     return new Device(nativeDevice, this)
   }
@@ -474,7 +498,9 @@ export class BleManager {
    */
   onDeviceDisconnected(deviceIdentifier: DeviceId, listener: (error: ?BleError, device: Device) => void): Subscription {
     const disconnectionListener = ([error, nativeDevice]: [?string, NativeDevice]) => {
-      if (deviceIdentifier !== nativeDevice.id) return
+      if (deviceIdentifier !== nativeDevice.id) {
+        return
+      }
       listener(error ? parseBleError(error, this._errorCodesToMessagesMapping) : null, new Device(nativeDevice, this))
     }
 
@@ -795,7 +821,7 @@ export class BleManager {
     characteristicIdentifier: Identifier,
     base64Value: Base64,
     transactionId: ?TransactionId
-  ) {
+  ): Promise<Characteristic> {
     if (!transactionId) {
       transactionId = this._nextUniqueID()
     }
@@ -992,7 +1018,9 @@ export class BleManager {
       NativeCharacteristic,
       TransactionId
     ]) => {
-      if (transactionId !== msgTransactionId) return
+      if (transactionId !== msgTransactionId) {
+        return
+      }
       if (error) {
         listener(parseBleError(error, this._errorCodesToMessagesMapping), null)
         return

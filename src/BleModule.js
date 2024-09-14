@@ -49,6 +49,13 @@ export interface NativeDevice {
   manufacturerData: ?Base64;
 
   /**
+   * Raw device scan data. When you have specific advertiser data,
+   * you can implement your own processing.
+   * @private
+   */
+  rawScanRecord: Base64;
+
+  /**
    * Map od service UUIDs with associated data.
    * @private
    */
@@ -270,9 +277,10 @@ export interface BleModuleInterface {
   /**
    * Destroys previously instantiated module. This function is
    * only safe when previously BleModule was created.
+   * @returns {Promise<void>} Promise may return an error when the function cannot be called.
    * @private
    */
-  destroyClient(): void;
+  destroyClient(): Promise<void>;
 
   // Monitoring state
 
@@ -310,15 +318,17 @@ export interface BleModuleInterface {
    * @param {?Array<UUID>} filteredUUIDs List of UUIDs for services which needs to be present to detect device during
    * scanning.
    * @param {?ScanOptions} options Platform dependent options
+   * @returns {Promise<void>} the promise may be rejected if the operation is impossible to perform.
    * @private
    */
-  startDeviceScan(filteredUUIDs: ?Array<UUID>, options: ?ScanOptions): void;
+  startDeviceScan(filteredUUIDs: ?Array<UUID>, options: ?ScanOptions): Promise<void>;
 
   /**
    * Stops device scan.
    * @private
+   * @returns {Promise<void>} the promise may be rejected if the operation is impossible to perform.
    */
-  stopDeviceScan(): void;
+  stopDeviceScan(): Promise<void>;
 
   // Device operations
 
@@ -350,11 +360,13 @@ export interface BleModuleInterface {
 
   /**
    * Request new MTU value for this device. This function currently is not doing anything
-   * on iOS platform as MTU exchange is done automatically.
+   * on iOS platform as MTU exchange is done automatically. Since Android 14,
+   * mtu management has been changed, more information can be found at the link:
+   * https://developer.android.com/about/versions/14/behavior-changes-all#mtu-set-to-517
    * @param {DeviceId} deviceIdentifier Device identifier.
    * @param {number} mtu New MTU to negotiate.
    * @param {TransactionId} transactionId Transaction handle used to cancel operation
-   * @returns {Promise<NativeDevice>} Device with updated MTU size. Default value is 23.
+   * @returns {Promise<NativeDevice>} Device with updated MTU size. Default value is 23 (517 since Android 14)..
    * @private
    */
   requestMTUForDevice(deviceIdentifier: DeviceId, mtu: number, transactionId: TransactionId): Promise<NativeDevice>;
@@ -771,16 +783,18 @@ export interface BleModuleInterface {
    * Cancels specified transaction
    *
    * @param {TransactionId} transactionId Transaction handle for operation to be cancelled
+   * @returns {Promise<void>}
    * @private
    */
-  cancelTransaction(transactionId: TransactionId): void;
+  cancelTransaction(transactionId: TransactionId): Promise<void>;
 
   /**
    * Sets new log level for native module's logging mechanism.
    * @param {LogLevel} logLevel New log level to be set.
+   * @returns {Promise<LogLevel>} Current log level.
    * @private
    */
-  setLogLevel(logLevel: $Keys<typeof LogLevel>): void;
+  setLogLevel(logLevel: $Keys<typeof LogLevel>): Promise<$Keys<typeof LogLevel> | void>;
 
   /**
    * Get current log level for native module's logging mechanism.
@@ -823,5 +837,11 @@ export interface BleModuleInterface {
   DisconnectionEvent: string;
 }
 
-export const BleModule: BleModuleInterface = NativeModules.BleClientManager
+/**
+ * Native module provider
+ *
+ * @private
+ */
+export const BleModule: BleModuleInterface = NativeModules.BlePlx
+
 export const EventEmitter = NativeEventEmitter

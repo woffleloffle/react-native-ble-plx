@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset='utf-8'>
-  <title>react-native-ble-plx 2.0.2 | Documentation</title>
+  <title>react-native-ble-plx 3.2.1 | Documentation</title>
   <meta name='description' content='React Native Bluetooth Low Energy library'>
   <meta name='viewport' content='width=device-width,initial-scale=1'>
   <link href='assets/bass.css' rel='stylesheet'>
@@ -15,7 +15,7 @@
       <div id='split-left' class='overflow-auto fs0 height-viewport-100'>
         <div class='py1 px2'>
           <h3 class='mb0 no-anchor'>react-native-ble-plx</h3>
-          <div class='mb1'><code>2.0.2</code></div>
+          <div class='mb1'><code>3.2.1</code></div>
           <input
             placeholder='Filter'
             id='filter-input'
@@ -29,9 +29,19 @@
               
                 
                 <li><a
-                  href='#introduction'
+                  href='#getting-started'
                   class="h5 bold black caps">
-                  Introduction
+                  Getting started
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#tutorials'
+                  class="h5 bold black caps">
+                  Tutorials
                   
                 </a>
                 
@@ -285,6 +295,12 @@
                         href='#devicemanufacturerdata'
                         class='regular pre-open'>
                         #manufacturerData
+                      </a></li>
+                      
+                      <li><a
+                        href='#devicerawscanrecord'
+                        class='regular pre-open'>
+                        #rawScanRecord
                       </a></li>
                       
                       <li><a
@@ -1723,6 +1739,12 @@
                         #callbackType
                       </a></li>
                       
+                      <li><a
+                        href='#scanoptionslegacyscan'
+                        class='regular pre-open'>
+                        #legacyScan
+                      </a></li>
+                      
                     </ul>
                   
                   
@@ -1945,94 +1967,244 @@
           
             <div class='keyline-top-not py2'><section class='py2 clearfix'>
 
-  <h2 id='introduction' class='mt0'>
-    Introduction
+  <h2 id='getting-started' class='mt0'>
+    Getting started
   </h2>
 
   
-    <p align="center">
-  <a href="https://github.com/Polidea/react-native-ble-plx"><img alt="react-native-ble-plx" src="logo.png" /></a>
-</p>
+    <h1 align="center" >
+  <a href="https://github.com/dotintent/react-native-ble-plx"><img style="max-height: 300px;" alt="react-native-ble-plx" src="logo.png" /></a>
+</h1>
 <p>This guide is an introduction to BLE stack and APIs exported by this library. All examples
 will be based on CC2541 SensorTag.</p>
-<h2>Creating BLE Manager</h2>
-<p>First step is to create BleManager instance which is an entry point to all available APIs.
-Make sure to create it after application started its execution. For example we can do it in
-Component's constructor:</p>
-<pre class='hljs'><span class="hljs-keyword">import</span> { BleManager } <span class="hljs-keyword">from</span> <span class="hljs-string">'react-native-ble-plx'</span>;
+<h3>Install and prepare package</h3>
+<p>In the case of Expo, you will need to prepare a plugin config, detailed information can be found here: <a href="https://github.com/dotintent/react-native-ble-plx?tab=readme-ov-file#expo-sdk-43">https://github.com/dotintent/react-native-ble-plx?tab=readme-ov-file#expo-sdk-43</a>
+In the case of react native CLI you need to configure two environments:</p>
+<ul>
+<li><a href="https://github.com/dotintent/react-native-ble-plx?tab=readme-ov-file#ios-example-setup">iOS</a></li>
+<li><a href="https://github.com/dotintent/react-native-ble-plx?tab=readme-ov-file#android-example-setup">Android</a></li>
+</ul>
+<h3>Creating BLE Manager</h3>
+<p>First step is to create BleManager instance which is an entry point to all available APIs. It should be declared <strong>OUTSIDE the life cycle of React</strong>. Make sure to create it after application started its execution. We can keep it as a static reference by either creating our own abstraction (ex.1) or by simply creating a new instance (ex.2).</p>
+<h4>Ex.1</h4>
+<pre class='hljs'><span class="hljs-keyword">import</span> { BleManager } <span class="hljs-keyword">from</span> <span class="hljs-string">'react-native-ble-plx'</span>
 
-<span class="hljs-keyword">constructor</span>() {
-    <span class="hljs-keyword">super</span>();
-    <span class="hljs-keyword">this</span>.manager = <span class="hljs-keyword">new</span> BleManager();
-    ...
+<span class="hljs-comment">// create your own singleton class</span>
+<span class="hljs-keyword">class</span> BLEServiceInstance {
+  manager: BleManage
+
+  <span class="hljs-keyword">constructor</span>(<span class="hljs-params"></span>) {
+    <span class="hljs-keyword">this</span>.manager = <span class="hljs-keyword">new</span> BleManager()
+  }
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> BLEService = <span class="hljs-keyword">new</span> BLEServiceInstance()</pre>
+<h4>Ex.2</h4>
+<pre class='hljs'><span class="hljs-keyword">import</span> { BleManager } <span class="hljs-keyword">from</span> <span class="hljs-string">'react-native-ble-plx'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> manager = <span class="hljs-keyword">new</span> BleManager()</pre>
+<p>Only <em>one</em> instance of BleManager is allowed. When you don't need any BLE functionality you can destroy created instance by calling <code>manager.destroy()</code> function. You can then recreate <code>BleManager</code> later on.</p>
+<p>Note that you may experience undefined behavior when calling a function on one <code>BleManager</code> and continuing with another instance. A frequently made error is to create a new instance of the manager for every re-render of a React Native Component.</p>
+<h3>Ask for permissions</h3>
+<p>Check if you requested following permissions</p>
+<ul>
+<li>PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION</li>
+<li>PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN (necessary for api 31+ )</li>
+<li>PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT (necessary for api 31+ )</li>
+</ul>
+<p>eg.</p>
+<pre class='hljs'>requestBluetoothPermission = <span class="hljs-keyword">async</span> () =&gt; {
+  <span class="hljs-keyword">if</span> (Platform.OS === <span class="hljs-string">'ios'</span>) {
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>
+  }
+  <span class="hljs-keyword">if</span> (Platform.OS === <span class="hljs-string">'android'</span> &amp;&amp; PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION) {
+    <span class="hljs-keyword">const</span> apiLevel = <span class="hljs-built_in">parseInt</span>(Platform.Version.toString(), <span class="hljs-number">10</span>)
+
+    <span class="hljs-keyword">if</span> (apiLevel &lt; <span class="hljs-number">31</span>) {
+      <span class="hljs-keyword">const</span> granted = <span class="hljs-keyword">await</span> PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+      <span class="hljs-keyword">return</span> granted === PermissionsAndroid.RESULTS.GRANTED
+    }
+    <span class="hljs-keyword">if</span> (PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN &amp;&amp; PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT) {
+      <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      ])
+
+      <span class="hljs-keyword">return</span> (
+        result[<span class="hljs-string">'android.permission.BLUETOOTH_CONNECT'</span>] === PermissionsAndroid.RESULTS.GRANTED &amp;&amp;
+        result[<span class="hljs-string">'android.permission.BLUETOOTH_SCAN'</span>] === PermissionsAndroid.RESULTS.GRANTED &amp;&amp;
+        result[<span class="hljs-string">'android.permission.ACCESS_FINE_LOCATION'</span>] === PermissionsAndroid.RESULTS.GRANTED
+      )
+    }
+  }
+
+  <span class="hljs-keyword">this</span>.showErrorToast(<span class="hljs-string">'Permission have not been granted'</span>)
+
+  <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>
 }</pre>
-<p>Only one instance of BleManager is allowed. When you don't need any BLE functionality you
-can destroy created instance by calling <code>this.manager.destroy()</code> function. You can then
-recreate <code>BleManager</code> later on as we did above.</p>
-<h2>Waiting for Powered On state</h2>
+<p>With <code>neverForLocation</code> flag active, you can remove <code>ACCESS_FINE_LOCATION</code> permissions ask e.g.:</p>
+<pre class='hljs'><span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> PermissionsAndroid.requestMultiple([
+  PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+  PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT
+])
+
+<span class="hljs-keyword">return</span> (
+  result[<span class="hljs-string">'android.permission.BLUETOOTH_CONNECT'</span>] === PermissionsAndroid.RESULTS.GRANTED &amp;&amp;
+  result[<span class="hljs-string">'android.permission.BLUETOOTH_SCAN'</span>] === PermissionsAndroid.RESULTS.GRANTED
+)</pre>
+<h3>Waiting for Powered On state</h3>
 <p>When iOS application launches BLE stack is not immediately available and we need to check its status.
 To detect current state and following state changes we can use <code>onStateChange()</code> function:</p>
-<pre class='hljs'>componentWillMount() {
-    <span class="hljs-keyword">const</span> subscription = <span class="hljs-keyword">this</span>.manager.onStateChange(<span class="hljs-function">(<span class="hljs-params">state</span>) =&gt;</span> {
-        <span class="hljs-keyword">if</span> (state === <span class="hljs-string">'PoweredOn'</span>) {
-            <span class="hljs-keyword">this</span>.scanAndConnect();
-            subscription.remove();
-        }
-    }, <span class="hljs-literal">true</span>);
-}</pre>
-<h2>Scanning devices</h2>
+<pre class='hljs'>React.useEffect(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+  <span class="hljs-keyword">const</span> subscription = manager.onStateChange(<span class="hljs-function"><span class="hljs-params">state</span> =&gt;</span> {
+    <span class="hljs-keyword">if</span> (state === <span class="hljs-string">'PoweredOn'</span>) {
+      scanAndConnect()
+      subscription.remove()
+    }
+  }, <span class="hljs-literal">true</span>)
+  <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> subscription.remove()
+}, [manager])</pre>
+<h3>Scanning devices</h3>
 <p>Devices needs to be scanned first to be able to connect to them. There is a simple function
 which allows only one callback to be registered to handle detected devices:</p>
-<pre class='hljs'>scanAndConnect() {
-    <span class="hljs-keyword">this</span>.manager.startDeviceScan(<span class="hljs-literal">null</span>, <span class="hljs-literal">null</span>, (error, device) =&gt; {
-        <span class="hljs-keyword">if</span> (error) {
-            <span class="hljs-comment">// Handle error (scanning will be stopped automatically)</span>
-            <span class="hljs-keyword">return</span>
-        }
+<pre class='hljs'><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">scanAndConnect</span>(<span class="hljs-params"></span>) </span>{
+  manager.startDeviceScan(<span class="hljs-literal">null</span>, <span class="hljs-literal">null</span>, (error, device) =&gt; {
+    <span class="hljs-keyword">if</span> (error) {
+      <span class="hljs-comment">// Handle error (scanning will be stopped automatically)</span>
+      <span class="hljs-keyword">return</span>
+    }
 
-        <span class="hljs-comment">// Check if it is a device you are looking for based on advertisement data</span>
-        <span class="hljs-comment">// or other criteria.</span>
-        <span class="hljs-keyword">if</span> (device.name === <span class="hljs-string">'TI BLE Sensor Tag'</span> || 
-            device.name === <span class="hljs-string">'SensorTag'</span>) {
-            
-            <span class="hljs-comment">// Stop scanning as it's not necessary if you are scanning for one device.</span>
-            <span class="hljs-keyword">this</span>.manager.stopDeviceScan();
+    <span class="hljs-comment">// Check if it is a device you are looking for based on advertisement data</span>
+    <span class="hljs-comment">// or other criteria.</span>
+    <span class="hljs-keyword">if</span> (device.name === <span class="hljs-string">'TI BLE Sensor Tag'</span> || device.name === <span class="hljs-string">'SensorTag'</span>) {
+      <span class="hljs-comment">// Stop scanning as it's not necessary if you are scanning for one device.</span>
+      manager.stopDeviceScan()
 
-            <span class="hljs-comment">// Proceed with connection.</span>
-        }
-    });
+      <span class="hljs-comment">// Proceed with connection.</span>
+    }
+  })
 }</pre>
 <p>It is worth to note that scanning function may emit one device multiple times. However
 when device is connected it won't broadcast and needs to be disconnected from central
 to be scanned again. Only one scanning listener can be registered.</p>
-<h2>Connecting and discovering services and characteristics</h2>
+<h4>Bluetooth 5 Advertisements in Android</h4>
+<p>To see devices that use Bluetooth 5 Advertising Extension you have to set the <code>legacyScan</code> variable to <code>false</code> in <a href="#scanoptions">Scan options</a> when you are starting <a href="#blemanagerstartdevicescan">BleManager.startDeviceScan()</a>,</p>
+<h3>Connecting and discovering services and characteristics</h3>
 <p>Once device is scanned it is in disconnected state. We need to connect to it and discover
 all services and characteristics it contains. Services may be understood
 as containers grouping characteristics based on their meaning. Characteristic is a
 container for a value which can be read, written and monitored based on available
 capabilities. For example connection may look like this:</p>
-<pre class='hljs'>device.connect()
-    .then(<span class="hljs-function">(<span class="hljs-params">device</span>) =&gt;</span> {
-        <span class="hljs-keyword">return</span> device.discoverAllServicesAndCharacteristics()
-    })
-    .then(<span class="hljs-function">(<span class="hljs-params">device</span>) =&gt;</span> {
-       <span class="hljs-comment">// Do work on device with services and characteristics</span>
-    })
-    .catch(<span class="hljs-function">(<span class="hljs-params">error</span>) =&gt;</span> {
-        <span class="hljs-comment">// Handle errors</span>
-    });</pre>
+<pre class='hljs'>device
+  .connect()
+  .then(<span class="hljs-function"><span class="hljs-params">device</span> =&gt;</span> {
+    <span class="hljs-keyword">return</span> device.discoverAllServicesAndCharacteristics()
+  })
+  .then(<span class="hljs-function"><span class="hljs-params">device</span> =&gt;</span> {
+    <span class="hljs-comment">// Do work on device with services and characteristics</span>
+  })
+  .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> {
+    <span class="hljs-comment">// Handle errors</span>
+  })</pre>
 <p>Discovery of services and characteristics is required to be executed once per connection*.
 It can be a long process depending on number of characteristics and services available.</p>
 <p>* Extremely rarely, when peripheral's service/characteristic set can change during a connection
 an additional service discovery may be needed.</p>
-<h2>Read, write and monitor values</h2>
-<p>After successful discovery of services you can call </p>
+<h3>Read, write and monitor values</h3>
+<p>After successful discovery of services you can call</p>
 <ul>
 <li><a href="#blemanagerreadcharacteristicfordevice">BleManager.readCharacteristicForDevice()</a>,</li>
-<li><a href="#blemanagerwritecharacteristicwithresponsefordevice">BleManager.writeCharacteristicWithResponseForDevice()</a>, </li>
+<li><a href="#blemanagerwritecharacteristicwithresponsefordevice">BleManager.writeCharacteristicWithResponseForDevice()</a>,</li>
 <li><a href="#blemanagermonitorcharacteristicfordevice">BleManager.monitorCharacteristicForDevice()</a></li>
 </ul>
-<p>and other functions which are described in detail in documentation.</p>
+<p>and other functions which are described in detail in documentation. You can also check our <em>example app</em> which is available in the repository.</p>
+
+  
+</section></div>
+          
+        
+          
+            <div class='keyline-top-not py2'><section class='py2 clearfix'>
+
+  <h2 id='tutorials' class='mt0'>
+    Tutorials
+  </h2>
+
+  
+    <h3>Monitoring device connection</h3>
+<p><code>onDeviceDisconnected</code> method allows you to monitor the disconnection of a device, more about the method can be found <a href="#here">BleManager.onDeviceDisconnected()</a>. Using it you can implement your own logic to handle the disconnection event. For example, you can try to reconnect to the device or show a notification to the user.</p>
+<p>Note: connection will be monitored only when app is in foreground.</p>
+<pre class='hljs'><span class="hljs-keyword">const</span> setupOnDeviceDisconnected = <span class="hljs-function">(<span class="hljs-params">deviceIdToMonitor: <span class="hljs-built_in">String</span></span>) =&gt;</span> {
+  bleManagerInstance.onDeviceDisconnected(deviceIdToMonitor, disconnectedListener)
+}
+
+<span class="hljs-keyword">const</span> disconnectedListener = <span class="hljs-function">(<span class="hljs-params">error: BleError | <span class="hljs-literal">null</span>, device: Device | <span class="hljs-literal">null</span></span>) =&gt;</span> {
+  <span class="hljs-keyword">if</span> (error) {
+    <span class="hljs-built_in">console</span>.error(<span class="hljs-built_in">JSON</span>.stringify(error, <span class="hljs-literal">null</span>, <span class="hljs-number">4</span>))
+  }
+  <span class="hljs-keyword">if</span> (device) {
+    <span class="hljs-built_in">console</span>.info(<span class="hljs-built_in">JSON</span>.stringify(device, <span class="hljs-literal">null</span>, <span class="hljs-number">4</span>))
+
+    <span class="hljs-comment">// reconnect to the device</span>
+    device.connect()
+  }
+}</pre>
+<h3>Reading and writing to characteristics</h3>
+<h4>Prepare the connection with your device</h4>
+<p>The first thing you need to do is connect to your device. Once the connection is established you can only perform basic operations without the possibility of interacting with the services on the device. To be able to interact with the services on the device, so you need to call an additional command <code>device.discoverAllServicesAndCharacteristics()</code> because even though you know what service and characteristics are on the device, they all must be visible to the GATT client, which handles all operations.</p>
+<pre class='hljs'>device
+  .connect()
+  .then(<span class="hljs-function"><span class="hljs-params">device</span> =&gt;</span> {
+    <span class="hljs-keyword">return</span> device.discoverAllServicesAndCharacteristics()
+  })
+  .then(<span class="hljs-function"><span class="hljs-params">device</span> =&gt;</span> {
+    <span class="hljs-comment">// A fully functional connection you can use, now you can read, write and monitor values</span>
+  })
+  .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> {
+    <span class="hljs-comment">// Handle errors</span>
+  })</pre>
+<h4>Reading from a characteristic</h4>
+<p>To read a value from a characteristic, you need to call the <code>readCharacteristic</code> method on the device object. The method returns a promise that resolves to the characteristic value.</p>
+<pre class='hljs'>device
+  .readCharacteristicForService(serviceUUID, characteristicUUID)
+  .then(<span class="hljs-function"><span class="hljs-params">characteristic</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Read characteristic value:'</span>, characteristic.value)
+  })
+  .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.error(<span class="hljs-string">'Read characteristic error:'</span>, error)
+  })</pre>
+<h4>Writing to a characteristic</h4>
+<p>To write a value to a characteristic, you need to call the <code>writeCharacteristicWithResponse</code> or <code>writeCharacteristicWithoutResponse</code> method on the device object. The method returns a promise that resolves when the write operation is completed.</p>
+<pre class='hljs'>device
+  .writeCharacteristicWithResponseForService(serviceUUID, characteristicUUID, value)
+  .then(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Write characteristic success'</span>)
+  })
+  .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.error(<span class="hljs-string">'Write characteristic error:'</span>, error)
+  })</pre>
+<h3>Connecting to a device that is already connected to the OS</h3>
+<p>If you want to connect to a device that isn't discoverable because it is already connected to the system, you can use the <code>getConnectedDevices</code> method to get a list of connected devices. Then you can use the <code>connect</code> method on the device object to connect to the device, after making sure that the device is not already connected.</p>
+<pre class='hljs'>bleManagerInstance
+  .getConnectedDevices([serviceUUIDs])
+  .then(<span class="hljs-function"><span class="hljs-params">devices</span> =&gt;</span> {
+    <span class="hljs-keyword">const</span> device = devices.find(<span class="hljs-function"><span class="hljs-params">d</span> =&gt;</span> d.id === deviceIdWeWantToConnectTo)
+
+    <span class="hljs-keyword">if</span> (device &amp;&amp; !device.isConnected) {
+      device.connect()
+    }
+  })
+  .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.error(<span class="hljs-string">'Get connected devices error:'</span>, error)
+  })</pre>
+<h3>Collecting native logs</h3>
+<p>If you encounter any issues with the library, you can enable native logs to get more information about what is happening under the hood. To enable native logs, you need to set the <code>logLevel</code> property on the BleManager instance to <code>LogLevel.Verbose</code>.</p>
+<pre class='hljs'>bleManagerInstance.setLogLevel(LogLevel.Verbose)</pre>
+<h4>Android</h4>
+<p>To collect native logs on Android, you can open the Logcat in Android Studio and set filters to <code>package:mine (tag:BluetoothGatt | tag:ReactNativeJS | RxBle)</code>.</p>
+<h4>iOS</h4>
+<p>To collect native logs on iOS, you can open the Xcode console.</p>
 
   
 </section></div>
@@ -2128,7 +2300,7 @@ manager.destroy();</pre>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>destroy()</span>
+            <span class='code strong strong truncate'>destroy</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2137,24 +2309,34 @@ manager.destroy();</pre>
   
 
   <p>Destroys <a href="#blemanager">BleManager</a> instance. A new instance needs to be created to continue working with
-this library. All operations which were in progress completes with
-<a href="#bleerrorcodebluetoothmanagerdestroyed">BluetoothManagerDestroyed</a> error code.</p>
+this library. All operations which were in progress completes with</p>
 
-    <div class='pre p1 fill-light mt0'>destroy()</div>
-  
-  
-
-  
-  
-  
-  
+    <div class='pre p1 fill-light mt0'>destroy</div>
   
   
 
   
+  
+  
+  
+  
+  
 
   
 
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        Promise may return an error when the function cannot be called.
+
+<a href="#bleerrorcodebluetoothmanagerdestroyed">BluetoothManagerDestroyed</a>
+ error code.
+
+      
+    
   
 
   
@@ -2189,7 +2371,7 @@ this library. All operations which were in progress completes with
 
   <p>Sets new log level for native module's logging mechanism.</p>
 
-    <div class='pre p1 fill-light mt0'>setLogLevel(logLevel: <a href="#loglevel">LogLevel</a>)</div>
+    <div class='pre p1 fill-light mt0'>setLogLevel(logLevel: <a href="#loglevel">LogLevel</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#loglevel">LogLevel</a>></div>
   
   
 
@@ -2218,6 +2400,14 @@ this library. All operations which were in progress completes with
 
   
 
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#loglevel">LogLevel</a>></code>:
+        Current log level.
+
+      
+    
   
 
   
@@ -2314,7 +2504,7 @@ promise or a callback which registers errors, <a href="#bleerror">BleError</a> w
 <a href="#bleerrorcodeoperationcancelled">OperationCancelled</a> will be emitted in that case. Cancelling transaction
 which doesn't exist is ignored.</p>
 
-    <div class='pre p1 fill-light mt0'>cancelTransaction(transactionId: <a href="#transactionid">TransactionId</a>)</div>
+    <div class='pre p1 fill-light mt0'>cancelTransaction(transactionId: <a href="#transactionid">TransactionId</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></div>
   
   
 
@@ -2343,6 +2533,14 @@ which doesn't exist is ignored.</p>
 
   
 
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+
+      
+    
   
 
   
@@ -2462,7 +2660,8 @@ setTimeout(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;
 
   
 
-  <p>Disable Bluetooth. This function blocks until BLE is in PoweredOff state. [Android only]</p>
+  <p>Deprecated
+Disable Bluetooth. This function blocks until BLE is in PoweredOff state. [Android only]</p>
 
     <div class='pre p1 fill-light mt0'>disable(transactionId: <a href="#transactionid">TransactionId</a>?): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#blemanager">BleManager</a>></div>
   
@@ -2525,7 +2724,7 @@ setTimeout(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>state()</span>
+            <span class='code strong strong truncate'>state</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2536,7 +2735,7 @@ setTimeout(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;
   <p>Current, global <a href="#state">State</a> of a <a href="#blemanager">BleManager</a>. All APIs are working only when active state
 is "PoweredOn".</p>
 
-    <div class='pre p1 fill-light mt0'>state(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#state">State</a>></div>
+    <div class='pre p1 fill-light mt0'>state</div>
   
   
 
@@ -2583,7 +2782,7 @@ is "PoweredOn".</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>onStateChange(listener, emitCurrentState)</span>
+            <span class='code strong strong truncate'>onStateChange</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2593,7 +2792,7 @@ is "PoweredOn".</p>
 
   <p>Notifies about <a href="#state">State</a> changes of a <a href="#blemanager">BleManager</a>.</p>
 
-    <div class='pre p1 fill-light mt0'>onStateChange(listener: function (newState: <a href="#state">State</a>), emitCurrentState: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>): <a href="#subscription">Subscription</a></div>
+    <div class='pre p1 fill-light mt0'>onStateChange</div>
   
   
 
@@ -2690,7 +2889,7 @@ Look at
 
   <p>Starts device scanning. When previous scan is in progress it will be stopped before executing this command.</p>
 
-    <div class='pre p1 fill-light mt0'>startDeviceScan(UUIDs: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="#uuid">UUID</a>>?, options: <a href="#scanoptions">ScanOptions</a>?, listener: function (error: <a href="#bleerror">BleError</a>?, scannedDevice: <a href="#device">Device</a>?))</div>
+    <div class='pre p1 fill-light mt0'>startDeviceScan(UUIDs: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="#uuid">UUID</a>>?, options: <a href="#scanoptions">ScanOptions</a>?, listener: function (error: <a href="#bleerror">BleError</a>?, scannedDevice: <a href="#device">Device</a>?)): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></div>
   
   
 
@@ -2739,6 +2938,21 @@ s will be scanned.
             <span class='code bold'>listener</span> <code class='quiet'>(function (error: <a href="#bleerror">BleError</a>?, scannedDevice: <a href="#device">Device</a>?))</code>
 	    Function which will be called for every scanned
 
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        Promise may return an error when the function cannot be called.
+
 <a href="#device">Device</a>
  (devices may be scanned multiple times). It's first argument is potential 
 <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
@@ -2750,15 +2964,14 @@ is a scanned
 <a href="#device">Device</a>
 .
 
-          </div>
-          
-        </div>
       
-    </div>
-  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        the promise may be rejected if the operation is impossible to perform.
 
-  
-
+      
+    
   
 
   
@@ -2783,7 +2996,7 @@ is a scanned
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>stopDeviceScan()</span>
+            <span class='code strong strong truncate'>stopDeviceScan</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2793,7 +3006,7 @@ is a scanned
 
   <p>Stops <a href="#device">Device</a> scan if in progress.</p>
 
-    <div class='pre p1 fill-light mt0'>stopDeviceScan()</div>
+    <div class='pre p1 fill-light mt0'>stopDeviceScan</div>
   
   
 
@@ -2808,6 +3021,14 @@ is a scanned
 
   
 
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        the promise may be rejected if the operation is impossible to perform.
+
+      
+    
   
 
   
@@ -3011,7 +3232,9 @@ above.</p>
   
 
   <p>Request new MTU value for this device. This function currently is not doing anything
-on iOS platform as MTU exchange is done automatically.</p>
+on iOS platform as MTU exchange is done automatically. Since Android 14,
+mtu management has been changed, more information can be found at the link:
+<a href="https://developer.android.com/about/versions/14/behavior-changes-all#mtu-set-to-517">https://developer.android.com/about/versions/14/behavior-changes-all#mtu-set-to-517</a></p>
 
     <div class='pre p1 fill-light mt0'>requestMTUForDevice(deviceIdentifier: <a href="#deviceid">DeviceId</a>, mtu: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, transactionId: <a href="#transactionid">TransactionId</a>?): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#device">Device</a>></div>
   
@@ -3064,7 +3287,7 @@ on iOS platform as MTU exchange is done automatically.</p>
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#device">Device</a>></code>:
-        Device with updated MTU size. Default value is 23.
+        Device with updated MTU size. Default value is 23 (517 since Android 14)..
 
       
     
@@ -4927,6 +5150,61 @@ default value of 23 is used.</p>
     <p>
       Type:
       <a href="#base64">Base64</a>?
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='devicerawscanrecord'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>rawScanRecord</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Raw device scan data. When you have specific advertiser data,
+you can implement your own processing.</p>
+
+    <div class='pre p1 fill-light mt0'>rawScanRecord</div>
+  
+    <p>
+      Type:
+      <a href="#base64">Base64</a>
     </p>
   
   
@@ -15702,6 +15980,11 @@ received by <a href="#blemanager">BleManager</a></p>
 
     <div class='pre p1 fill-light mt0'>BleErrorCodeMessageMapping</div>
   
+    <p>
+      Type:
+      {}
+    </p>
+  
   
 
   
@@ -16259,6 +16542,61 @@ and overwrite values of interest to you.</p>
     <p>
       Type:
       $Values&#x3C;any>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='scanoptionslegacyscan'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>legacyScan</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Use legacyScan (default true) [Android only]
+<a href="https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder#setLegacy(boolean">https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder#setLegacy(boolean</a>)</p>
+
+    <div class='pre p1 fill-light mt0'>legacyScan</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>
     </p>
   
   
